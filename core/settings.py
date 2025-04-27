@@ -35,7 +35,8 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS').split(',')
 
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS').split(',')
+# Maneira mais robusta de definir ALLOWED_HOSTS
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost, 127.0.0.1').replace(' ', '').split(',')
 
 DATABASE_DB_URL = os.getenv('DATABASE_URL')
 
