@@ -109,7 +109,7 @@ if os.getenv('DATABASE_URL'):
             os.getenv('DATABASE_URL'),
             conn_max_age=600,
             conn_health_checks=True,
-            ssl_require=not IS_BUILDING,  # Desabilita SSL durante build
+            ssl_require=False,
         )
     }
     # Configurações SSL apenas quando não está buildando
