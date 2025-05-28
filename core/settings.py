@@ -97,20 +97,27 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 # Usar DATABASE_URL se disponível (Render), senão usar configurações individuais
+# No settings.py, ajuste a configuração do banco
+import os
+
+# Durante o build, não use SSL
+IS_BUILDING = os.getenv('RENDER_BUILD_COMMAND', False)
+
 if os.getenv('DATABASE_URL'):
     DATABASES = {
         'default': dj_database_url.parse(
             os.getenv('DATABASE_URL'),
             conn_max_age=600,
             conn_health_checks=True,
-            ssl_require=True,  # Força SSL
+            ssl_require=not IS_BUILDING,  # Desabilita SSL durante build
         )
     }
-    # Configurações adicionais para SSL no PostgreSQL
-    DATABASES['default']['OPTIONS'] = {
-        'sslmode': 'require',
-        'connect_timeout': 30,
-    }
+    # Configurações SSL apenas quando não está buildando
+    if not IS_BUILDING:
+        DATABASES['default']['OPTIONS'] = {
+            'sslmode': 'require',
+            'connect_timeout': 30,
+        }
 elif DEBUG:
     # Use SQLite para desenvolvimento local
     DATABASES = {
