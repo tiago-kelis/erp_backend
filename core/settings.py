@@ -103,9 +103,24 @@ if os.getenv('DATABASE_URL'):
             os.getenv('DATABASE_URL'),
             conn_max_age=600,
             conn_health_checks=True,
+            ssl_require=True,  # Força SSL
         )
     }
+    # Configurações adicionais para SSL no PostgreSQL
+    DATABASES['default']['OPTIONS'] = {
+        'sslmode': 'require',
+        'connect_timeout': 30,
+    }
+elif DEBUG:
+    # Use SQLite para desenvolvimento local
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 else:
+    # Configuração manual para outros bancos
     DATABASES = {
         'default': {
             'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.mysql'),
@@ -116,7 +131,6 @@ else:
             'PORT': os.getenv('DB_PORT', '')
         }
     }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
