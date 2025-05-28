@@ -14,8 +14,7 @@ from pathlib import Path
 from datetime import timedelta
 import os
 from dotenv import load_dotenv
-
-
+import dj_database_url
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -33,12 +32,11 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'default-insecure-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS').split(',')
+# Corrigir para evitar erro quando a variável não existir
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if os.getenv('CORS_ALLOWED_ORIGINS') else []
 
 # Maneira mais robusta de definir ALLOWED_HOSTS
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost, 127.0.0.1').replace(' ', '').split(',')
-
-DATABASE_DB_URL = os.getenv('DATABASE_URL')
 
 
 # Application definition
@@ -98,16 +96,26 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.mysql'),
-        'NAME': os.getenv('DB_NAME', ''),
-        'HOST': os.getenv('DB_HOST', ''),
-        'USER': os.getenv('DB_USER', ''),
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
-        'PORT': os.getenv('DB_PORT', '')
+# Usar DATABASE_URL se disponível (Render), senão usar configurações individuais
+if os.getenv('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.parse(
+            os.getenv('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.mysql'),
+            'NAME': os.getenv('DB_NAME', ''),
+            'HOST': os.getenv('DB_HOST', ''),
+            'USER': os.getenv('DB_USER', ''),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'PORT': os.getenv('DB_PORT', '')
+        }
+    }
 
 
 # Password validation
@@ -151,6 +159,9 @@ STATICFILES_DIRS = [
     BASE_DIR / "static"
 ]
 
+# Criar diretório static se não existir
+os.makedirs(BASE_DIR / "static", exist_ok=True)
+
 # Configuração do WhiteNoise
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
@@ -173,7 +184,7 @@ SIMPLE_JWT = {
 
 # Configurações de segurança para produção
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
@@ -182,3 +193,6 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 ano
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    
+    # Adicionar para o Render
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
