@@ -19,8 +19,8 @@ class Group(models.Model):
     enterprise = models.ForeignKey(
         Enterprise, 
         on_delete=models.CASCADE,
-        null=True,  # AQUI DENTRO do ForeignKey
-        blank=True  # AQUI DENTRO do ForeignKey
+        null=True,  
+        blank=True 
     )
 
 class Group_Permissions(models.Model):
