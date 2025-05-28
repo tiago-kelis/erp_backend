@@ -16,6 +16,7 @@ import os
 from dotenv import load_dotenv
 import dj_database_url
 
+
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
@@ -98,28 +99,51 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 # Usar DATABASE_URL se disponível (Render), senão usar configurações individuais
 # No settings.py, ajuste a configuração do banco
-import os
 
-# Durante o build, não use SSL
-IS_BUILDING = os.getenv('RENDER_BUILD_COMMAND', False)
 
+
+
+load_dotenv()
+
+# ... resto do código ...
+
+# Database
 if os.getenv('DATABASE_URL'):
-    DATABASES = {
-        'default': dj_database_url.parse(
-            os.getenv('DATABASE_URL'),
-            conn_max_age=600,
-            conn_health_checks=True,
-            ssl_require=False,
-        )
-    }
-    # Configurações SSL apenas quando não está buildando
-    if not IS_BUILDING:
-        DATABASES['default']['OPTIONS'] = {
-            'sslmode': 'require',
-            'connect_timeout': 30,
+    # Parse manual da DATABASE_URL para evitar problemas
+    import re
+    
+    DATABASE_URL = os.getenv('DATABASE_URL')
+    
+    # Extrai componentes da URL
+    # postgresql://user:password@host:port/dbname
+    pattern = r'postgres(?:ql)?://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)'
+    match = re.match(pattern, DATABASE_URL)
+    
+    if match:
+        user, password, host, port, dbname = match.groups()
+        
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': dbname.split('?')[0],  # Remove query params
+                'USER': user,
+                'PASSWORD': password,
+                'HOST': host,
+                'PORT': port,
+                'OPTIONS': {
+                    'sslmode': 'disable',  # Desabilita SSL por enquanto
+                    'connect_timeout': 30,
+                }
+            }
+        }
+    else:
+        # Fallback para dj_database_url
+        import dj_database_url
+        DATABASES = {
+            'default': dj_database_url.parse(DATABASE_URL)
         }
 elif DEBUG:
-    # Use SQLite para desenvolvimento local
+    # SQLite para desenvolvimento
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -127,17 +151,19 @@ elif DEBUG:
         }
     }
 else:
-    # Configuração manual para outros bancos
+    # Configuração manual
     DATABASES = {
         'default': {
-            'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.mysql'),
+            'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
             'NAME': os.getenv('DB_NAME', ''),
             'HOST': os.getenv('DB_HOST', ''),
             'USER': os.getenv('DB_USER', ''),
             'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'PORT': os.getenv('DB_PORT', '')
+            'PORT': os.getenv('DB_PORT', '5432')
         }
     }
+
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
