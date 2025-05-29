@@ -13,7 +13,7 @@ urlpatterns = [
     #Groups and Permissons EndPoints
     path('groups', Groups.as_view()),
     path('groups/<int:group_id>', GroupDetail.as_view()),
-    path('permissions', PermissionDetail.as_view()),
+    path('permissions/', PermissionDetail.as_view()),
 
     #Tasks EndPoints
     path('tasks', Tasks.as_view()),
