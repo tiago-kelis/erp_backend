@@ -103,29 +103,18 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 
 
-load_dotenv()
-
-# ... resto do código ...
-
 # Database
-# settings.py
-if os.getenv('DATABASE_URL'):    
-    
-    # Parse a URL básica
-    db_config = dj_database_url.parse(os.getenv('DATABASE_URL'))
-    
-    # Adicione as mesmas configurações que funcionaram no DBeaver
-    db_config['OPTIONS'] = {
-        'sslmode': 'require',
-        'sslcert': None,
-        'sslkey': None,
-        'sslrootcert': None,
-        # Esta é a chave - mesma factory que você usou no DBeaver
-        'options': '-c sslmode=require'
+if os.getenv('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.parse(os.getenv('DATABASE_URL'))
     }
-    
-    DATABASES = {'default': db_config}
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
