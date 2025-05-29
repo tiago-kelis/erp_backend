@@ -108,61 +108,23 @@ load_dotenv()
 # ... resto do código ...
 
 # Database
-if os.getenv('DATABASE_URL'):
-    # Parse manual da DATABASE_URL para evitar problemas
-    import re
+# settings.py
+if os.getenv('DATABASE_URL'):    
     
-    DATABASE_URL = os.getenv('DATABASE_URL')
+    # Parse a URL básica
+    db_config = dj_database_url.parse(os.getenv('DATABASE_URL'))
     
-    # Extrai componentes da URL
-    # postgresql://user:password@host:port/dbname
-    pattern = r'postgres(?:ql)?://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)'
-    match = re.match(pattern, DATABASE_URL)
-    
-    if match:
-        user, password, host, port, dbname = match.groups()
-        
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': dbname.split('?')[0],  # Remove query params
-                'USER': user,
-                'PASSWORD': password,
-                'HOST': host,
-                'PORT': port,
-                'OPTIONS': {
-                    'sslmode': 'disable',  # Desabilita SSL por enquanto
-                    'connect_timeout': 30,
-                }
-            }
-        }
-    else:
-        # Fallback para dj_database_url
-        import dj_database_url
-        DATABASES = {
-            'default': dj_database_url.parse(DATABASE_URL)
-        }
-elif DEBUG:
-    # SQLite para desenvolvimento
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
+    # Adicione as mesmas configurações que funcionaram no DBeaver
+    db_config['OPTIONS'] = {
+        'sslmode': 'require',
+        'sslcert': None,
+        'sslkey': None,
+        'sslrootcert': None,
+        # Esta é a chave - mesma factory que você usou no DBeaver
+        'options': '-c sslmode=require'
     }
-else:
-    # Configuração manual
-    DATABASES = {
-        'default': {
-            'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
-            'NAME': os.getenv('DB_NAME', ''),
-            'HOST': os.getenv('DB_HOST', ''),
-            'USER': os.getenv('DB_USER', ''),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'PORT': os.getenv('DB_PORT', '5432')
-        }
-    }
-
+    
+    DATABASES = {'default': db_config}
 
 
 # Password validation
