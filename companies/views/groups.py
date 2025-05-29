@@ -7,6 +7,7 @@ from accounts.models import Group, Group_Permissions
 
 from rest_framework.views import Response
 from rest_framework.exceptions import APIException
+from rest_framework import status
 
 from django.contrib.auth.models import Permission
 
@@ -22,43 +23,44 @@ class Groups(Base):
 
         return Response({"groups": serializer.data})
 
-    def post(self, request):
-        enterprise_id = self.get_enterprise_id(request.user.id)
 
-        name = request.data.get('name')
-        permissions = request.data.get('permissions')
+    def post(self, request):
+        # Obtendo e validando os dados
+        enterprise_id = self.get_enterprise_id(request.user.id)
+        name = request.data.get("name", "").strip()
+        permissions = request.data.get("permissions", "")
 
         if not name:
-            raise RequiredFields
+            return Response({"error": "O nome do grupo é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
 
-        created_group = Group.objects.create(
-            name=name,
-            enterprise_id=enterprise_id
-        )
+        try:
+            created_group = Group.objects.create(name=name, enterprise_id=enterprise_id)
+        except Exception:
+            return Response({"error": "Erro ao criar grupo"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if permissions:
-            # "1,2,3,4,5" => [1, 2, 3, 4, 5]
-            permissions = permissions.split(",")
-
             try:
-                for item in permissions:
-                    permission = Permission.objects.filter(id=item).exists()
+                permission_ids = [int(item) for item in permissions.split(",")]
 
-                    if not permission:
+                for item in permission_ids:
+                    if not Permission.objects.filter(id=item).exists():
                         created_group.delete()
-                        raise APIException(
-                            "A permissão {p} não existe".format(p=item))
+                        return Response(
+                            {"error": f"A permissão {item} não existe"}, 
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
                     if not Group_Permissions.objects.filter(group_id=created_group.id, permission_id=item).exists():
-                        Group_Permissions.objects.create(
-                            group_id=created_group.id,
-                            permission_id=item
-                        )
+                        Group_Permissions.objects.create(group_id=created_group.id, permission_id=item)
+
             except ValueError:
                 created_group.delete()
-                raise APIException("Envie as permissões no padrão correto")
+                return Response(
+                    {"error": "Envie as permissões no formato correto (exemplo: 1,2,3,4)"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        return Response({"success": True})
+        return Response({"success": True}, status=status.HTTP_201_CREATED)
 
 
 class GroupDetail(Base):
@@ -74,43 +76,44 @@ class GroupDetail(Base):
 
         return Response({"group": serializer.data})
 
+
     def put(self, request, group_id):
+        # Obtendo e validando os dados
         enterprise_id = self.get_enterprise_id(request.user.id)
+        self.get_group(group_id, enterprise_id)  # Confirma se o grupo existe antes de modificar
 
-        self.get_group(group_id, enterprise_id)
+        name = request.data.get("name", "").strip()
+        permissions = request.data.get("permissions", "")
 
-        name = request.data.get('name')
-        permissions = request.data.get('permissions')
-
+        # Atualizar nome do grupo, se fornecido
         if name:
-            Group.objects.filter(id=group_id).update(
-                name=name
-            )
+            Group.objects.filter(id=group_id).update(name=name)
 
+        # Deletar permissões antigas antes de adicionar as novas
         Group_Permissions.objects.filter(group_id=group_id).delete()
 
         if permissions:
-            # "1,2,3,4,5" => [1, 2, 3, 4, 5]
-            permissions = permissions.split(",")
-
             try:
-                for item in permissions:
-                    permission = Permission.objects.filter(id=item).exists()
+                permission_ids = [int(item) for item in permissions.split(",")]
 
-                    if not permission:
-                        raise APIException(
-                            "A permissão {p} não existe".format(p=item))
+                for item in permission_ids:
+                    if not Permission.objects.filter(id=item).exists():
+                        return Response(
+                            {"error": f"A permissão {item} não existe"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
                     if not Group_Permissions.objects.filter(group_id=group_id, permission_id=item).exists():
-                        Group_Permissions.objects.create(
-                            group_id=group_id,
-                            permission_id=item
-                        )
-            except ValueError:
-                raise APIException("Envie as permissões no padrão correto")
+                        Group_Permissions.objects.create(group_id=group_id, permission_id=item)
 
-        return Response({"success": True})
-    
+            except ValueError:
+                return Response(
+                    {"error": "Envie as permissões no formato correto (exemplo: 1,2,3,4)"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        return Response({"success": True}, status=status.HTTP_200_OK)
+        
     def delete(self, request, group_id):
         enterprise_id = self.get_enterprise_id(request.user.id)
 
